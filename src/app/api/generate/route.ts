@@ -15,81 +15,35 @@ export async function POST(req: Request) {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `
-You are an expert Amazon SEO listing copywriter.
+You are an Amazon SEO Listing Expert.
 
-Your job is to generate HIGH-CONVERTING, SEO-OPTIMIZED product listings that rank on first page.
+Your task is to generate a high-converting Amazon listing using the provided keywords.
 
-Rules:
-- Prioritize high search volume keywords.
-- Use keywords naturally without stuffing.
-- Follow Amazon SEO best practices.
-- Make content benefit-driven, not keyword-dumped.
-- Maintain readability and persuasive tone.
-- Do not repeat the same keyword excessively.
-- Follow exact character limits.
+Please analyze the provided Keyword Data and internally categorize them by search volume and relevance into:
+- PRIMARY KEYWORDS (MUST appear naturally in the Title)
+- SECONDARY KEYWORDS (Use across bullets strategically)
+- SUPPORT KEYWORDS (Use where relevant without keyword stuffing)
 
-SEO Strategy:
-- Primary keyword must appear in Title.
-- Secondary keywords in Bullets.
-- Remaining keywords in Description and Backend.
-- Avoid duplicate words in backend search terms.
-- No punctuation in backend search terms.
-- Backend terms must be lowercase only.
-
-Tone:
-Professional, conversion-focused, marketplace optimized. 
-
-Generate a fully optimized Amazon product listing using the data below.
-
-Product Name:
-${productName}
-
-Brand Name:
-${brandName}
-
-Marketplace:
-${marketplace}
+Product Name: ${productName}
+Brand Name: ${brandName}
+Marketplace: ${marketplace}
 
 Keyword Data:
 ${keywordData}
 
-Instructions:
+Rules:
+1. ALL primary keywords MUST be included in the Title naturally.
+2. Do not repeat the same keyword phrase unnecessarily.
+3. Avoid keyword stuffing.
+4. Maintain readability and persuasive tone.
+5. Follow Amazon best practices.
+6. Title must be under 200 characters.
+7. Each bullet must be under 250 characters.
+8. Generate 5 bullet points.
+9. Include emotional triggers and benefit-driven language.
+10. Keep it conversion-focused.
 
-Step 1:
-Identify top 5 primary keywords based on highest search volume.
-If no search volume data available, select the most relevant 5 keywords.
-
-Step 2:
-Create:
-
-1) TITLE
-- Maximum 200 characters
-- Start with strongest primary keyword
-- Include 3–5 high-value keywords
-- Make it readable and conversion-focused
-
-2) 5 BULLET POINTS
-- Exactly 5
-- 150–200 characters each
-- Focus on benefits
-- Integrate secondary keywords naturally
-- Avoid repetition
-
-3) PRODUCT DESCRIPTION
-- 1000–1500 characters
-- Persuasive tone
-- Use remaining keywords
-- Natural flow
-- No keyword stuffing
-
-4) BACKEND SEARCH TERMS
-- Max 250 bytes
-- Lowercase only
-- No punctuation
-- No repeated words
-- Use unused keywords
-
-Output format strictly as JSON, matching the following structure:
+Output format strictly as JSON, matching the following structure exactly (do not output any other text or markdown blocks):
 {
   "title": "...",
   "bullets": [
@@ -102,8 +56,7 @@ Output format strictly as JSON, matching the following structure:
   "description": "...",
   "backend": "..."
 }
-
-Before generating output, internally cluster keywords by relevance and buyer intent, then distribute them strategically across Title, Bullets, Description, and Backend. Ensure at least 80% of top 10 highest volume keywords are used naturally in the listing. Return ONLY the raw JSON object. Do not include markdown blocks like \`\`\`json.`;
+`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
