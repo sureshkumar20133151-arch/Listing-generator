@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Copy, Download, FileText, FileSpreadsheet, File } from 'lucide-react';
+import { Check, Copy, Download, FileText, FileSpreadsheet, File, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 export interface GeneratedListing {
@@ -13,9 +13,11 @@ export interface GeneratedListing {
 
 interface ListingResultProps {
     result: GeneratedListing | null;
+    onRegenerate?: (section: 'title' | 'bullets' | 'description' | 'backend') => void;
+    isRegenerating?: string | null;
 }
 
-export default function ListingResult({ result }: ListingResultProps) {
+export default function ListingResult({ result, onRegenerate, isRegenerating }: ListingResultProps) {
     const [copiedSection, setCopiedSection] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'title' | 'bullets' | 'description' | 'backend'>('title');
 
@@ -70,18 +72,42 @@ export default function ListingResult({ result }: ListingResultProps) {
                         </span>
                     )}
                 </div>
-                <button
-                    onClick={() => {
-                        const textToCopy = Array.isArray(content)
-                            ? (content as any[]).map(el => el?.props?.children || '').join('\n')
-                            : typeof content === 'string' ? content : '';
-                        copyToClipboard(textToCopy, sectionKey);
-                    }}
-                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-gray-300 hover:text-white flex items-center gap-2 text-sm"
-                >
-                    {copiedSection === sectionKey ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                    {copiedSection === sectionKey ? 'Copied' : 'Copy'}
-                </button>
+                <div className="flex items-center gap-2">
+                    {onRegenerate && (
+                        <button
+                            onClick={() => onRegenerate(sectionKey as any)}
+                            disabled={isRegenerating !== null}
+                            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm disabled:opacity-50 ${isRegenerating === sectionKey
+                                    ? 'bg-purple-500/20 text-purple-300'
+                                    : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white cursor-pointer'
+                                }`}
+                        >
+                            {isRegenerating === sectionKey ? (
+                                <>
+                                    <span className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></span>
+                                    Regenerating...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="w-4 h-4" />
+                                    Regenerate
+                                </>
+                            )}
+                        </button>
+                    )}
+                    <button
+                        onClick={() => {
+                            const textToCopy = Array.isArray(content)
+                                ? (content as any[]).map(el => el?.props?.children || '').join('\n')
+                                : typeof content === 'string' ? content : '';
+                            copyToClipboard(textToCopy, sectionKey);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-gray-300 hover:text-white flex items-center gap-2 text-sm"
+                    >
+                        {copiedSection === sectionKey ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                        {copiedSection === sectionKey ? 'Copied' : 'Copy'}
+                    </button>
+                </div>
             </div>
             <div className="text-gray-200 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
                 {content}

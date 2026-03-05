@@ -8,10 +8,13 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<GeneratedListing | null>(null);
+  const [lastFormData, setLastFormData] = useState<ListingFormData | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
 
   const handleGenerate = async (data: ListingFormData) => {
     setIsLoading(true);
     setResult(null);
+    setLastFormData(data);
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -36,6 +39,30 @@ export default function Home() {
       alert('Error generating listing. Please check the console.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRegenerate = async (section: 'title' | 'bullets' | 'description' | 'backend') => {
+    if (!lastFormData || !result) return;
+    setIsRegenerating(section);
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...lastFormData, regenerateSection: section, currentListing: result }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to regenerate section');
+      }
+
+      const updatedSection = await response.json();
+      setResult(prev => prev ? { ...prev, ...updatedSection } : null);
+    } catch (error) {
+      console.error(error);
+      alert(`Error regenerating ${section}. Please check the console.`);
+    } finally {
+      setIsRegenerating(null);
     }
   };
 
@@ -64,7 +91,11 @@ export default function Home() {
 
           {result ? (
             <div className="w-full xl:flex-1 relative z-10">
-              <ListingResult result={result} />
+              <ListingResult
+                result={result}
+                onRegenerate={handleRegenerate}
+                isRegenerating={isRegenerating}
+              />
             </div>
           ) : (
             <div className="hidden xl:flex flex-col items-center justify-center min-h-[500px] w-full xl:flex-1 glass-card rounded-2xl p-12 text-center relative z-10">
