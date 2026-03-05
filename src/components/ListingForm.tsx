@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Loader2, UploadCloud } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -26,6 +26,21 @@ export default function ListingForm({ onSubmit, isLoading }: ListingFormProps) {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [fileName, setFileName] = useState<string | null>(null);
+    const [loadingText, setLoadingText] = useState('Generating Magic Listing...');
+
+    useEffect(() => {
+        if (!isLoading) {
+            setLoadingText('Generating Magic Listing...');
+            return;
+        }
+        const messages = ['Analyzing Keywords...', 'Writing Title...', 'Crafting Bullets...', 'Optimizing Search Terms...'];
+        let i = 0;
+        const interval = setInterval(() => {
+            i = (i + 1) % messages.length;
+            setLoadingText(messages[i]);
+        }, 2000);
+        return () => clearInterval(interval);
+    }, [isLoading]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -40,8 +55,28 @@ export default function ListingForm({ onSubmit, isLoading }: ListingFormProps) {
                 const workbook = XLSX.read(data, { type: 'array' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                const csvStr = XLSX.utils.sheet_to_csv(worksheet);
 
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+                if (jsonData.length > 1) {
+                    const headers = jsonData[0] as string[];
+                    let keywordColIdx = headers.findIndex(h => h && h.toString().toLowerCase().includes('keyword'));
+                    if (keywordColIdx === -1) keywordColIdx = 0; // Default to first column
+
+                    const extracted = jsonData.slice(1, 41) // Top 40 keywords
+                        .map(row => row[keywordColIdx])
+                        .filter(val => val && typeof val === 'string')
+                        .map(val => val.trim());
+
+                    if (extracted.length > 0) {
+                        const cleanList = extracted.join('\n');
+                        setFormData(prev => ({ ...prev, keywordData: cleanList }));
+                        return;
+                    }
+                }
+
+                // Fallback
+                const csvStr = XLSX.utils.sheet_to_csv(worksheet);
                 setFormData(prev => ({ ...prev, keywordData: csvStr }));
             } catch (error) {
                 console.error("Error parsing file:", error);
@@ -161,7 +196,7 @@ export default function ListingForm({ onSubmit, isLoading }: ListingFormProps) {
                     {isLoading ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            Generating Listing...
+                            {loadingText}
                         </>
                     ) : (
                         <>

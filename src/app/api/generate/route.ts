@@ -15,35 +15,25 @@ export async function POST(req: Request) {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `
-You are an Amazon SEO Listing Expert.
+You are an expert Amazon Listing Optimizer.
 
-Your task is to generate a high-converting Amazon listing using the provided keywords.
-
-Please analyze the provided Keyword Data and internally categorize them by search volume and relevance into:
-- PRIMARY KEYWORDS (MUST appear naturally in the Title)
-- SECONDARY KEYWORDS (Use across bullets strategically)
-- SUPPORT KEYWORDS (Use where relevant without keyword stuffing)
+Generate a high-converting Amazon listing using the provided product data and keywords.
 
 Product Name: ${productName}
 Brand Name: ${brandName}
 Marketplace: ${marketplace}
 
-Keyword Data:
+Top Keywords:
 ${keywordData}
 
 Rules:
-1. ALL primary keywords MUST be included in the Title naturally.
-2. Do not repeat the same keyword phrase unnecessarily.
-3. Avoid keyword stuffing.
-4. Maintain readability and persuasive tone.
-5. Follow Amazon best practices.
-6. Title must be under 200 characters.
-7. Each bullet must be under 250 characters.
-8. Generate 5 bullet points.
-9. Include emotional triggers and benefit-driven language.
-10. Keep it conversion-focused.
+1. Title must be strictly under 200 characters. Include primary keywords naturally.
+2. Bullet Points: Generate exactly 5 bullets. Each bullet MUST be strictly under 200 characters. Focus on benefits and emotional triggers.
+3. Description must be under 2000 characters and highly persuasive.
+4. Backend search terms MUST be strictly under 249 bytes, space-separated, NO COMMAS, no repetitions, no stop words.
+5. Avoid keyword stuffing. Maintain readability.
 
-Output format strictly as JSON, matching the following structure exactly (do not output any other text or markdown blocks):
+Output format strictly as JSON:
 {
   "title": "...",
   "bullets": [
@@ -54,18 +44,38 @@ Output format strictly as JSON, matching the following structure exactly (do not
     "..."
   ],
   "description": "...",
-  "backend": "..."
+  "backend": "...",
+  "usedKeywords": ["keyword1", "keyword2"]
 }
 `;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
 
-    // Clean up potential markdown formatting from the response
     const cleanJsonString = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
     const generatedListing = JSON.parse(cleanJsonString);
 
-    return NextResponse.json(generatedListing);
+    // Enforce Amazon character limits strictly
+    const trimText = (text: string, max: number) => text.length > max ? text.substring(0, max).trim() : text;
+    const trimBytes = (text: string, maxBytes: number) => {
+      let b = new Blob([text]);
+      if (b.size <= maxBytes) return text;
+      let trimmed = text;
+      while (new Blob([trimmed]).size > maxBytes) {
+        trimmed = trimmed.slice(0, -1);
+      }
+      return trimmed.trim(); // Ensure no trailing space
+    };
+
+    const finalListing = {
+      title: trimText(generatedListing.title || '', 200),
+      bullets: (generatedListing.bullets || []).map((b: string) => trimText(b, 200)),
+      description: trimText(generatedListing.description || '', 2000),
+      backend: trimBytes(generatedListing.backend || '', 249),
+      usedKeywords: generatedListing.usedKeywords || []
+    };
+
+    return NextResponse.json(finalListing);
   } catch (error) {
     console.error('Error generating listing:', error);
     return NextResponse.json({ error: 'Failed to generate listing.' }, { status: 500 });
